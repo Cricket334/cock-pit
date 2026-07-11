@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ride Cockpit</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --font-display: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  /* Light theme (default) */
+  :root, html[data-theme="light"] {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --line: #111111;
+    --text: #000000;
+    --text-dim: #5a5a5a;
+    --ok: #1f7a1f;
+    --off: #bbbbbb;
+  }
+  /* Dark theme */
+  html[data-theme="dark"] {
+    --bg: #000000;
+    --panel: #000000;
+    --line: #eeeeee;
+    --text: #ffffff;
+    --text-dim: #999999;
+    --ok: #4fd44f;
+    --off: #444444;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.3em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .session-time {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    padding: 12px 20px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+  }
+  button {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  button:hover { background: var(--text); color: var(--bg); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:disabled:hover { background: var(--panel); color: var(--text); }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--off);
+    flex-shrink: 0;
+  }
+  .dot.on { background: var(--ok); }
+
+  .push-right { margin-left: auto; }
+
+  .weight-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 0 4px 0 12px;
+  }
+  .weight-field input {
+    width: 56px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    text-align: right;
+    padding: 8px 4px;
+  }
+  .weight-field input:focus { outline: none; }
+  .weight-field span { color: var(--text-dim); }
+
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    padding: 16px 20px 20px;
+  }
+  @media (min-width: 720px) {
+    main { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .tile {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 18px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 150px;
+  }
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+  }
+  .value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .value {
+    font-family: var(--font-mono);
+    font-weight: 800;
+    font-size: clamp(38px, 8vw, 56px);
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .value.stale { opacity: 0.3; }
+  .unit {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+  }
+
+  footer {
+    padding: 10px 20px 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--line);
+    letter-spacing: 0.02em;
+  }
+  a { color: var(--text); }
+
+  .unsupported {
+    margin: 40px auto;
+    max-width: 460px;
+    text-align: center;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-row">
+    <h1>Ride Cockpit</h1>
+    <div class="session-time" id="sessionTime">00:00:00</div>
+  </div>
+</header>
+
+<div class="controls">
+  <button id="btnTrainer"><span class="dot" id="dotTrainer"></span><span id="btnTrainerLabel">Connect Trainer</span></button>
+  <button id="btnHR"><span class="dot" id="dotHR"></span><span id="btnHRLabel">Connect Heart Rate</span></button>
+  <button id="btnReset">Reset Session</button>
+  <label class="weight-field">
+    Weight
+    <input type="number" id="weightInput" value="75" min="20" max="200" step="0.5">
+    <span id="weightUnitLabel">kg</span>
+  </label>
+  <button id="weightUnitToggle">lb</button>
+  <button id="unitToggle">Units: km/h</button>
+  <button id="modeToggle" class="push-right">Display: Current</button>
+  <button id="themeToggle">Theme: Dark</button>
+</div>
+
+<main id="mainGrid">
+  <div class="tile">
+    <div class="label"><span>Power</span><span id="powFlag"></span></div>
+    <div class="value-row"><span class="value stale" id="powVal">--</span><span class="unit">W</span></div>
+    <div class="sub" id="powSub">-- w/kg</div>
+  </div>
+  <div class="tile">
+    <div class="label"><span>Heart Rate</span><span id="hrFlag"></span></div>
+    <div class="value-row"><span class="value stale" id="hrVal">--</span><span class="unit">bpm</span></div>
+    <div class="sub" id="hrSub">max --</div>
+  </div>
+  <div class="tile">
+    <div class="label"><span>Cadence</span><span id="cadFlag"></span></div>
+    <div class="value-row"><span class="value stale" id="cadVal">--</span><span class="unit">rpm</span></div>
+    <div class="sub">&nbsp;</div>
+  </div>
+  <div class="tile">
+    <div class="label"><span>Speed</span><span id="spdFlag"></span></div>
+    <div class="value-row"><span class="value stale" id="spdVal">--</span><span class="unit" id="spdUnit">km/h</span></div>
+    <div class="sub" id="spdSub">dist -- km</div>
+  </div>
+</main>
+
+<footer id="footer">
+  Reads standard Bluetooth GATT fitness services (FTMS / Cycling Power / CSC / Heart Rate) directly from your hardware. No account, no cloud, no external assets — this file works fully offline. Works in Chrome or Edge on desktop/Android — Web Bluetooth is not supported on iOS/Safari.
+</footer>
+
+<script>
+(function() {
+  const bleSupported = 'bluetooth' in navigator;
+  if (!bleSupported) {
+    document.querySelector('main').outerHTML =
+      '<div class="unsupported">Your browser doesn\'t support Web Bluetooth.<br><br>Open this page in <strong>Chrome</strong> or <strong>Edge</strong> on desktop or Android to connect to your trainer.</div>';
+    document.querySelector('.controls').style.display = 'none';
+    return;
+  }
+
+  // ---- state ----
+  let useMph = false;
+  let useLb = false;
+  let weightKg = 75;
+  let displayMode = 'current'; // 'current' | 'average'
+  let wheelCircumferenceM = 2.105; // 700x25c default
+  let sessionStart = null;
+  let distanceM = 0;
+  let lastCsc = null;
+  let staleTimers = {};
+
+  const metrics = {
+    pow: { current: null, sum: 0, count: 0 },
+    hr:  { current: null, sum: 0, count: 0, max: 0 },
+    cad: { current: null, sum: 0, count: 0 },
+    spd: { current: null, sum: 0, count: 0 } // stored in km/h internally
+  };
+
+  const el = id => document.getElementById(id);
+
+  function markLive(key) {
+    const valEl = el(key + 'Val');
+    valEl.classList.remove('stale');
+    clearTimeout(staleTimers[key]);
+    staleTimers[key] = setTimeout(() => valEl.classList.add('stale'), 4000);
+  }
+
+  function displayedValue(key) {
+    const m = metrics[key];
+    if (m.current === null) return null;
+    return displayMode === 'current' ? m.current : (m.sum / m.count);
+  }
+
+  function startSessionClock() {
+    if (sessionStart) return;
+    sessionStart = Date.now();
+    setInterval(() => {
+      const s = Math.floor((Date.now() - sessionStart) / 1000);
+      const hh = String(Math.floor(s / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      el('sessionTime').textContent = `${hh}:${mm}:${ss}`;
+    }, 1000);
+  }
+
+  function renderPower() {
+    const v = displayedValue('pow');
+    if (v === null) return;
+    el('powVal').textContent = Math.round(v);
+    const wkg = weightKg > 0 ? (v / weightKg).toFixed(2) : '--';
+    el('powSub').textContent = `${wkg} w/kg`;
+  }
+  function renderHR() {
+    const v = displayedValue('hr');
+    if (v === null) return;
+    el('hrVal').textContent = Math.round(v);
+    el('hrSub').textContent = 'max ' + metrics.hr.max;
+  }
+  function renderCadence() {
+    const v = displayedValue('cad');
+    if (v === null) return;
+    el('cadVal').textContent = Math.round(v);
+  }
+  function renderSpeed() {
+    const v = displayedValue('spd');
+    if (v === null) return;
+    const display = useMph ? v * 0.621371 : v;
+    el('spdVal').textContent = display.toFixed(1);
+    const km = distanceM / 1000;
+    const dist = useMph ? km * 0.621371 : km;
+    el('spdSub').textContent = 'dist ' + dist.toFixed(2) + (useMph ? ' mi' : ' km');
+  }
+  function renderAll() {
+    renderPower(); renderHR(); renderCadence(); renderSpeed();
+  }
+
+  function recordPower(power) {
+    const m = metrics.pow;
+    m.current = power; m.sum += power; m.count++;
+    markLive('pow');
+    renderPower();
+  }
+  function recordHR(hr) {
+    const m = metrics.hr;
+    m.current = hr; m.sum += hr; m.count++;
+    if (hr > m.max) m.max = hr;
+    markLive('hr');
+    renderHR();
+  }
+  function recordCadence(rpm) {
+    const m = metrics.cad;
+    m.current = rpm; m.sum += rpm; m.count++;
+    markLive('cad');
+    renderCadence();
+  }
+  function recordSpeed(kmh) {
+    const m = metrics.spd;
+    m.current = kmh; m.sum += kmh; m.count++;
+    markLive('spd');
+    renderSpeed();
+  }
+  function recordDistanceDelta(deltaM) {
+    distanceM += deltaM;
+    renderSpeed();
+  }
+
+  el('btnReset').onclick = () => {
+    metrics.pow = { current: null, sum: 0, count: 0 };
+    metrics.hr = { current: null, sum: 0, count: 0, max: 0 };
+    metrics.cad = { current: null, sum: 0, count: 0 };
+    metrics.spd = { current: null, sum: 0, count: 0 };
+    distanceM = 0;
+    el('powVal').textContent = el('hrVal').textContent = el('cadVal').textContent = el('spdVal').textContent = '--';
+    el('powSub').textContent = '-- w/kg';
+    el('hrSub').textContent = 'max --';
+    el('spdSub').textContent = 'dist -- ' + (useMph ? 'mi' : 'km');
+    sessionStart = Date.now();
+  };
+
+  el('unitToggle').onclick = () => {
+    useMph = !useMph;
+    el('unitToggle').textContent = 'Units: ' + (useMph ? 'mph' : 'km/h');
+    el('spdUnit').textContent = useMph ? 'mph' : 'km/h';
+    renderSpeed();
+  };
+
+  el('modeToggle').onclick = () => {
+    displayMode = displayMode === 'current' ? 'average' : 'current';
+    el('modeToggle').textContent = 'Display: ' + (displayMode === 'current' ? 'Current' : 'Average');
+    renderAll();
+  };
+
+  el('themeToggle').onclick = () => {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    el('themeToggle').textContent = 'Theme: ' + (isDark ? 'Dark' : 'Light');
+  };
+
+  function refreshWeightDisplay() {
+    const input = el('weightInput');
+    input.value = useLb ? (weightKg * 2.20462).toFixed(1) : weightKg.toFixed(1);
+    el('weightUnitLabel').textContent = useLb ? 'lb' : 'kg';
+  }
+
+  el('weightInput').addEventListener('input', e => {
+    const raw = parseFloat(e.target.value);
+    if (!isNaN(raw) && raw > 0) {
+      weightKg = useLb ? raw / 2.20462 : raw;
+      renderPower();
+    }
+  });
+
+  el('weightUnitToggle').onclick = () => {
+    useLb = !useLb;
+    el('weightUnitToggle').textContent = useLb ? 'kg' : 'lb';
+    refreshWeightDisplay();
+  };
+  refreshWeightDisplay();
+
+  function parseHeartRate(dv) {
+    const flags = dv.getUint8(0);
+    const hr = (flags & 0x1) ? dv.getUint16(1, true) : dv.getUint8(1);
+    recordHR(hr);
+  }
+
+  function parseCyclingPower(dv) {
+    const power = dv.getInt16(2, true);
+    recordPower(power);
+  }
+
+  function parseCSC(dv) {
+    const flags = dv.getUint8(0);
+    let offset = 1;
+    const hasWheel = flags & 0x1;
+    const hasCrank = flags & 0x2;
+    const now = { wheelRev: null, wheelTime: null, crankRev: null, crankTime: null };
+
+    if (hasWheel) {
+      now.wheelRev = dv.getUint32(offset, true); offset += 4;
+      now.wheelTime = dv.getUint16(offset, true); offset += 2;
+    }
+    if (hasCrank) {
+      now.crankRev = dv.getUint16(offset, true); offset += 2;
+      now.crankTime = dv.getUint16(offset, true); offset += 2;
+    }
+
+    if (lastCsc) {
+      if (hasWheel && lastCsc.wheelRev !== null) {
+        const revDiff = (now.wheelRev - lastCsc.wheelRev + 2 ** 32) % (2 ** 32);
+        const timeDiff = (now.wheelTime - lastCsc.wheelTime + 65536) % 65536;
+        const seconds = timeDiff / 1024;
+        if (seconds > 0.1 && revDiff > 0) {
+          const distM = revDiff * wheelCircumferenceM;
+          const speedKmh = (distM / seconds) * 3.6;
+          if (speedKmh < 120) recordSpeed(speedKmh);
+          recordDistanceDelta(distM);
+        } else if (seconds > 2) {
+          recordSpeed(0);
+        }
+      }
+      if (hasCrank && lastCsc.crankRev !== null) {
+        const revDiff = (now.crankRev - lastCsc.crankRev + 65536) % 65536;
+        const timeDiff = (now.crankTime - lastCsc.crankTime + 65536) % 65536;
+        const seconds = timeDiff / 1024;
+        if (seconds > 0.1 && revDiff > 0) {
+          recordCadence((revDiff / seconds) * 60);
+        } else if (seconds > 3) {
+          recordCadence(0);
+        }
+      }
+    }
+    lastCsc = now;
+  }
+
+  function parseFTMS(dv) {
+    let offset = 0;
+    const flags = dv.getUint16(offset, true); offset += 2;
+    const moreDataBit = flags & 0x1;
+    const hasAvgSpeed = flags & 0x2;
+    const hasInstCad = flags & 0x4;
+    const hasAvgCad = flags & 0x8;
+    const hasTotalDist = flags & 0x10;
+    const hasResistance = flags & 0x20;
+    const hasPower = flags & 0x40;
+    const hasAvgPower = flags & 0x80;
+    const hasExpEnergy = flags & 0x100;
+    const hasHR = flags & 0x200;
+    const hasMET = flags & 0x400;
+    const hasElapsed = flags & 0x800;
+    const hasRemaining = flags & 0x1000;
+
+    if (!moreDataBit) {
+      const speedRaw = dv.getUint16(offset, true); offset += 2;
+      recordSpeed(speedRaw * 0.01);
+    }
+    if (hasAvgSpeed) { offset += 2; }
+    if (hasInstCad) {
+      const cadRaw = dv.getUint16(offset, true); offset += 2;
+      recordCadence(cadRaw * 0.5);
+    }
+    if (hasAvgCad) { offset += 2; }
+    if (hasTotalDist) { offset += 3; }
+    if (hasResistance) { offset += 2; }
+    if (hasPower) {
+      const power = dv.getInt16(offset, true); offset += 2;
+      recordPower(power);
+    }
+    if (hasAvgPower) { offset += 2; }
+    if (hasExpEnergy) { offset += 5; }
+    if (hasHR) {
+      const hr = dv.getUint8(offset); offset += 1;
+      recordHR(hr);
+    }
+    if (hasMET) { offset += 1; }
+    if (hasElapsed) { offset += 2; }
+    if (hasRemaining) { offset += 2; }
+  }
+
+  async function connectTrainer() {
+    const btn = el('btnTrainer');
+    btn.disabled = true;
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['cycling_power', 'cycling_speed_and_cadence', 'fitness_machine']
+      });
+      const server = await device.gatt.connect();
+      let connectedAny = false;
+
+      try {
+        const svc = await server.getPrimaryService('fitness_machine');
+        const chr = await svc.getCharacteristic('indoor_bike_data');
+        chr.addEventListener('characteristicvaluechanged', e => parseFTMS(e.target.value));
+        await chr.startNotifications();
+        connectedAny = true;
+        el('powFlag').textContent = el('cadFlag').textContent = el('spdFlag').textContent = 'FTMS';
+      } catch (e) {}
+
+      try {
+        const svc = await server.getPrimaryService('cycling_power');
+        const chr = await svc.getCharacteristic('cycling_power_measurement');
+        chr.addEventListener('characteristicvaluechanged', e => parseCyclingPower(e.target.value));
+        await chr.startNotifications();
+        connectedAny = true;
+        if (!el('powFlag').textContent) el('powFlag').textContent = 'CP';
+      } catch (e) {}
+
+      try {
+        const svc = await server.getPrimaryService('cycling_speed_and_cadence');
+        const chr = await svc.getCharacteristic('csc_measurement');
+        chr.addEventListener('characteristicvaluechanged', e => parseCSC(e.target.value));
+        await chr.startNotifications();
+        connectedAny = true;
+        if (!el('cadFlag').textContent) el('cadFlag').textContent = 'CSC';
+      } catch (e) {}
+
+      if (!connectedAny) {
+        alert('Connected to the device, but none of the expected cycling services (FTMS / Cycling Power / CSC) were found.');
+      } else {
+        el('dotTrainer').classList.add('on');
+        el('btnTrainerLabel').textContent = device.name || 'Trainer Connected';
+        startSessionClock();
+      }
+      device.addEventListener('gattserverdisconnected', () => {
+        el('dotTrainer').classList.remove('on');
+        el('btnTrainerLabel').textContent = 'Connect Trainer';
+      });
+    } catch (err) {
+      if (err.name !== 'NotFoundError') console.error(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function connectHR() {
+    const btn = el('btnHR');
+    btn.disabled = true;
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: ['heart_rate'] }]
+      });
+      const server = await device.gatt.connect();
+      const svc = await server.getPrimaryService('heart_rate');
+      const chr = await svc.getCharacteristic('heart_rate_measurement');
+      chr.addEventListener('characteristicvaluechanged', e => parseHeartRate(e.target.value));
+      await chr.startNotifications();
+      el('dotHR').classList.add('on');
+      el('btnHRLabel').textContent = device.name || 'HR Connected';
+      startSessionClock();
+      device.addEventListener('gattserverdisconnected', () => {
+        el('dotHR').classList.remove('on');
+        el('btnHRLabel').textContent = 'Connect Heart Rate';
+      });
+    } catch (err) {
+      if (err.name !== 'NotFoundError') console.error(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  el('btnTrainer').addEventListener('click', connectTrainer);
+  el('btnHR').addEventListener('click', connectHR);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
